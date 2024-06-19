@@ -1,0 +1,5 @@
+build/*.js
+build/*.png
+build/*/*.png
+res/R.ts
+node_modules/
