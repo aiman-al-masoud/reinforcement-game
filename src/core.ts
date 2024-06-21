@@ -66,9 +66,12 @@ export class World {
 
         for (let i = 0; i < ticks; i++) {
 
-            episode = episode.extend(episode.present.tick(dt), new NoOp())
-            episode = episode.extend(action.perform(episode.present), action)
+            const worldAfterTick = episode.present.tick(dt)
+            const worldAfterAction = action.perform(worldAfterTick)
+            episode = episode.extend(worldAfterAction, action)
             action = policy.getAction(episode.present.toHash())
+            // episode = episode.extend(episode.present.tick(dt), new NoOp())
+            // episode = episode.extend(action.perform(episode.present), action)
         }
 
         return episode
@@ -192,6 +195,18 @@ export class Sprite {
         return this.setXVel(x).setYVel(y)
     }
 
+    setXPos(x:number){
+        return this.copy({ pos: v(x, this.getPos().y) })
+    }
+
+    setYPos(y:number){
+        return this.copy({ pos: v(this.getPos().x, y) })
+    }
+
+    setPos(x:number, y:number){
+        return this.setXPos(x).setYPos(y)
+    }
+
     getId(): string {
         return this.data.id
     }
@@ -286,8 +301,14 @@ export class Sprite {
      */
     toHash(): string {
 
-        const quantizedPos = this.getPos().over(100).toInt().times(100)
-        return `id=${this.getId()},pos=${quantizedPos},colliding=${this.data.colliding}`
+
+        // const quantizedPos = this.getPos().toInt()
+        const quantizedPos = this.getPos().over(10).toInt().times(10)
+        // const quantizedPos = this.getPos().over(100).toInt().times(100)
+        // return `id=${this.getId()},pos=${quantizedPos},colliding=${this.data.colliding}`
+
+        if (this.getId()!=='player') return ''
+        return `${quantizedPos}`
     }
 }
 
@@ -425,7 +446,7 @@ export class Trump extends Stickman {
         if (other instanceof Hamburger) {
             return sprite.increaseScore(5)
         }
-
+        
         if (other instanceof Sombrero) {
             return sprite.decreaseScore(1)
         }
@@ -613,15 +634,15 @@ export class Canvas {
     readonly canvas: HTMLCanvasElement
     readonly ctx: CanvasRenderingContext2D
 
-    constructor(/* root: HTMLElement, */ canvas:HTMLCanvasElement,  width: number, height: number, background: string) {
+    constructor(root: HTMLElement, /* canvas:HTMLCanvasElement, */  width: number, height: number, background: string) {
 
-        this.canvas = canvas
-        // this.canvas = document.createElement('canvas')
+        // this.canvas = canvas
+        this.canvas = document.createElement('canvas')
         this.canvas.width = width
         this.canvas.height = height
         this.canvas.style.background = background
-        // root.innerHTML = ''
-        // root.appendChild(this.canvas)
+        root.innerHTML = ''
+        root.appendChild(this.canvas)
         this.ctx = this.canvas.getContext('2d')!
     }
 
@@ -908,7 +929,7 @@ export class Value {
 
         const actionReturnsPairs = Object.entries(this.s2a2r[state.toHash()]!)
         const actionValuePairs = actionReturnsPairs.map(x => [x[0], sum(x[1]) / Math.max(1, x[1].length)] as const)
-        const [ah, _] = actionValuePairs.toSorted((a, b) => a[1] - b[1]).at(0)!
+        const [ah, _] = actionValuePairs.toSorted((b, a) => a[1] - b[1]).at(0)!
         return this.getActionByHash[ah]!
     }
 
@@ -922,6 +943,11 @@ function sum(numbers: number[]) {
 export class MonteCarlo {
 
     readonly pi: Policy
+    readonly q:Value
+
+
+
+    readonly savedEpisodes:Episode[]
 
     constructor(
 
@@ -947,9 +973,12 @@ export class MonteCarlo {
         readonly world: World,
         readonly getReward: (world: World) => number,
         readonly actorId: string,
+        readonly getRandomState: (original:World) =>World,
     ) {
 
         this.pi = new Policy(actorId)
+        this.q = new Value()
+        this.savedEpisodes = []
     }
 
     train() {
@@ -961,19 +990,20 @@ export class MonteCarlo {
 
     protected trainOneEpisode() {
 
-        const s0 = this.world // TODO: randomize position of player
+        const s0 = this.getRandomState(this.world)        
         const a0 = this.pi.getRandomAction()
         const episode = s0.generateEpisode(this.episodeLengthInTicks, this.episodeDt, this.pi, a0)
-        const q = new Value()
         let g = 0
 
         for (let t = episode.history.length - 1; t > 0; t--) {
 
             g = this.gamma * g + this.getReward(episode.worldAt(t))
             let [s, a] = episode.at(t - 1)
-            q.update(s, a, g)
-            this.pi.setAction(s, q.getBestAction(s))
+            this.q.update(s, a, g)
+            this.pi.setAction(s, this.q.getBestAction(s))
         }
+
+        this.savedEpisodes.push(episode)
     }
 
 }
