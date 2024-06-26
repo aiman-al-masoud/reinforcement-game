@@ -905,7 +905,8 @@ export class Episode {
 
 export class Value {
 
-    readonly s2a2r: { [state: string]: { [action: string]: number[] } } = {}
+    // readonly s2a2r: { [state: string]: { [action: string]: number[] } } = {}
+    readonly s2a2r: { [state: string]: { [action: string]: [number, number] } } = {}
     readonly getActionByHash: { [action: string]: Action } = {}
 
     update(state: World, action: Action, g: number) {
@@ -918,17 +919,20 @@ export class Value {
         }
 
         if (!this.s2a2r[stateHash]![actionHash]) {
-            this.s2a2r[stateHash]![actionHash] = []
             this.getActionByHash[actionHash] = action
+            this.s2a2r[stateHash]![actionHash] = [0, 1]
         }
 
-        this.s2a2r[stateHash]![actionHash]!.push(g)
+        // this.s2a2r[stateHash]![actionHash]!.push(g)
+        this.s2a2r[stateHash]![actionHash]![0]+=g/this.s2a2r[stateHash]![actionHash]![1]
+        this.s2a2r[stateHash]![actionHash]![1]+=1
     }
 
     getBestAction(state: World): Action {
 
         const actionReturnsPairs = Object.entries(this.s2a2r[state.toHash()]!)
-        const actionValuePairs = actionReturnsPairs.map(x => [x[0], sum(x[1]) / Math.max(1, x[1].length)] as const)
+        // const actionValuePairs = actionReturnsPairs.map(x => [x[0], sum(x[1]) / Math.max(1, x[1].length)] as const)
+        const actionValuePairs  = actionReturnsPairs.map(x=>[x[0], x[1][0]] as const)
         const [ah, _] = actionValuePairs.toSorted((b, a) => a[1] - b[1]).at(0)!
         return this.getActionByHash[ah]!
     }

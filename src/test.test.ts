@@ -67,7 +67,7 @@ test('monte carlo', () => {
         .putSprite(new Sombrero({  id: 'sombrero1',  pos: v(50, 260), movable: false }))
         .putSprite(Wall.create({ id: 'wall1', rows: 2, cols: 30, pos: v(0, 300)}))
 
-    const epochs = 100
+    const epochs = 1000
     const dt = 1/10
     const episodeSize = 100
 
