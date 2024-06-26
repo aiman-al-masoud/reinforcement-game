@@ -236,3 +236,7 @@ export const keyNames = {
 export type KeyName = keyof typeof keyNames
 
 
+export function sum(numbers: number[]) {
+    return numbers.reduce((a, b) => a + b, 0)
+}
+

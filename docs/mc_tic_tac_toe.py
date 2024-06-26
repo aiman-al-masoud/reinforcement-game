@@ -147,40 +147,24 @@ class Policy:
 
         episode: List[Tuple[State, Action]] = []
         s, a = s0, a0
+        first_player = s0.turn()
+        second_player = 'o' if first_player == 'x' else 'x'
 
-        if s0.turn() == 'x':
+        while True:
+                    
+            episode.append((s, a))
 
-            while True:
-                
-                episode.append((s, a))
+            s = a.perform(s, first_player)
+            if s.is_terminal():
+                episode.append((s, NoOp()))
+                break
 
-                s = a.perform(s, 'x')
-                if s.is_terminal():
-                    episode.append((s, NoOp()))
-                    break
+            s = pi2.get_action(s).perform(s, second_player)
+            if s.is_terminal():
+                episode.append((s, NoOp()))
+                break
 
-                s = pi2.get_action(s).perform(s, 'o')
-                if s.is_terminal():
-                    episode.append((s, NoOp()))
-                    break
-
-                a = self.get_action(s)
-        else:
-
-            while True:
-
-                s = pi2.get_action(s).perform(s, 'o')
-                if s.is_terminal():
-                    episode.append((s, NoOp()))
-                    break
-
-                episode.append((s, a))
-                s = a.perform(s, 'x')
-                if s.is_terminal():
-                    episode.append((s, NoOp()))
-                    break
-
-                a = self.get_action(s)
+            a = self.get_action(s)
 
         return episode
 
@@ -270,54 +254,29 @@ if __name__ == '__main__':
 
     random.seed(100)
 
-
-    # pi_rand = Policy()
-    # pi_30k = monte_carlo(max_iters=30_000)
-    # pi_60k = monte_carlo(max_iters=60_000)
-
-    # rate_baseline = win_rate_against(pi_rand, pi_rand)
-    # rate_30k = win_rate_against(pi_30k, pi_rand)
-    # rate_60k = win_rate_against(pi_60k, pi_rand)
-    # # print('states covered by 30k', len(pi_30k.state2action))
-    # # print('states covered by 60k', len(pi_60k.state2action))
-    # print(
-    #     'baseline=', rate_baseline,
-    #     'rate_30k=', rate_30k,
-    #     'rate_60k=', rate_60k,
-    # )
-
-    # assert rate_30k > rate_baseline
-    # assert rate_60k > rate_30k
-
-    # -----------------------------------------------------
-
     # create a random policy
     pi_rand = Policy()
     # train the first policy against the random one
     pi1 = monte_carlo(max_iters=30_000, pi_opponent=pi_rand)
     # train the second policy against the first policy
-    pi2 = monte_carlo(max_iters=30_000, pi_opponent=pi1)
+    # pi2 = monte_carlo(max_iters=30_000, pi_opponent=pi1)
 
     rate_random_vs_random = win_rate_against(pi_rand, pi_rand)
-    rate_pi2_vs_random = win_rate_against(pi2, pi_rand)
-    rate_pi2_vs_pi2 = win_rate_against(pi2, pi2)
-    rate_pi2_vs_pi1 = win_rate_against(pi2, pi1)
+    # rate_pi2_vs_random = win_rate_against(pi2, pi_rand)
+    # rate_pi2_vs_pi2 = win_rate_against(pi2, pi2)
+    # rate_pi2_vs_pi1 = win_rate_against(pi2, pi1)
     rate_pi1_vs_random = win_rate_against(pi1, pi_rand)
 
-    assert rate_pi2_vs_random > rate_random_vs_random
+    # assert rate_pi2_vs_random > rate_random_vs_random
+    assert rate_pi1_vs_random > rate_random_vs_random
 
     print(
-        'rate_random_vs_random=', rate_random_vs_random, 
-        'rate_pi1_vs_random=', rate_pi1_vs_random,
-        'rate_pi2_vs_random=', rate_pi2_vs_random,
-        'rate_pi2_vs_pi2=', rate_pi2_vs_pi2,
-        'rate_pi2_vs_pi1=', rate_pi2_vs_pi1,
+        'rate_random_vs_random=', rate_random_vs_random, '\n',
+        'rate_pi1_vs_random=', rate_pi1_vs_random, '\n',
+        # 'rate_pi2_vs_random=', rate_pi2_vs_random, '\n',
+        # 'rate_pi2_vs_pi2=', rate_pi2_vs_pi2, '\n',
+        # 'rate_pi2_vs_pi1=', rate_pi2_vs_pi1,
+        sep = '',
     )
-
-
     
-    s0 = random_state()
-    episode = pi2.play_against(pi_rand, s0, pi2.get_action(s0))
-    for s, _ in episode:
-        print(s)
-        print('--------------------------')
+  

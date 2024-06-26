@@ -70,8 +70,6 @@ export class World {
             const worldAfterAction = action.perform(worldAfterTick)
             episode = episode.extend(worldAfterAction, action)
             action = policy.getAction(episode.present.toHash())
-            // episode = episode.extend(episode.present.tick(dt), new NoOp())
-            // episode = episode.extend(action.perform(episode.present), action)
         }
 
         return episode
@@ -288,25 +286,31 @@ export class Sprite {
     enterCollision(other: Sprite): this | undefined {
 
         let sprite = this.isFalling() ? this.setYVel(0) : this
-        sprite = sprite.copy({ colliding: true })
+
+        if (other instanceof Wall){
+            sprite = sprite.copy({ colliding: true })
+        }
         return sprite
     }
 
     exitCollision(other: Sprite): this | undefined {
-        return this.copy({ colliding: false })
+
+        if (other instanceof Wall){
+            // sprite = sprite.copy({ colliding: true })
+            return this.copy({ colliding: false })
+        }
+
+        return this
     }
 
     /**
      * Quantizes the state and returns a string representation.
+     * TODO: fix usage of full state.
      */
     toHash(): string {
-
-
-        // const quantizedPos = this.getPos().toInt()
+        
         const quantizedPos = this.getPos().over(10).toInt().times(10)
-        // const quantizedPos = this.getPos().over(100).toInt().times(100)
         // return `id=${this.getId()},pos=${quantizedPos},colliding=${this.data.colliding}`
-
         if (this.getId()!=='player') return ''
         return `${quantizedPos}`
     }
@@ -634,9 +638,8 @@ export class Canvas {
     readonly canvas: HTMLCanvasElement
     readonly ctx: CanvasRenderingContext2D
 
-    constructor(root: HTMLElement, /* canvas:HTMLCanvasElement, */  width: number, height: number, background: string) {
+    constructor(root: HTMLElement, width: number, height: number, background: string) {
 
-        // this.canvas = canvas
         this.canvas = document.createElement('canvas')
         this.canvas.width = width
         this.canvas.height = height
@@ -747,25 +750,6 @@ export class Keyboard {
 }
 
 
-
-
-
-
-// TODO: pre-render un-movable objects on another canvas
-// https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas
-
-
-
-// actions: just one action at a time
-// four actions:
-// setXVel(100), setXVel(-100), setYVel(-100), setVel(v(0,0))
-// assume all actions are possible all the time
-// given a world.toHash() choose one of these actions as the optimal one learned from interaction with a game-level.
-// the length of an episode can be defined as the number of ticks.
-
-
-
-// -------------------------------------------------------------------------------------------
 
 export class Policy {
 
@@ -901,11 +885,8 @@ export class Episode {
 
 }
 
-
-
 export class Value {
 
-    // readonly s2a2r: { [state: string]: { [action: string]: number[] } } = {}
     readonly s2a2r: { [state: string]: { [action: string]: [number, number] } } = {}
     readonly getActionByHash: { [action: string]: Action } = {}
 
@@ -923,7 +904,6 @@ export class Value {
             this.s2a2r[stateHash]![actionHash] = [0, 1]
         }
 
-        // this.s2a2r[stateHash]![actionHash]!.push(g)
         this.s2a2r[stateHash]![actionHash]![0]+=g/this.s2a2r[stateHash]![actionHash]![1]
         this.s2a2r[stateHash]![actionHash]![1]+=1
     }
@@ -931,7 +911,6 @@ export class Value {
     getBestAction(state: World): Action {
 
         const actionReturnsPairs = Object.entries(this.s2a2r[state.toHash()]!)
-        // const actionValuePairs = actionReturnsPairs.map(x => [x[0], sum(x[1]) / Math.max(1, x[1].length)] as const)
         const actionValuePairs  = actionReturnsPairs.map(x=>[x[0], x[1][0]] as const)
         const [ah, _] = actionValuePairs.toSorted((b, a) => a[1] - b[1]).at(0)!
         return this.getActionByHash[ah]!
@@ -939,10 +918,6 @@ export class Value {
 
 }
 
-
-function sum(numbers: number[]) {
-    return numbers.reduce((a, b) => a + b, 0)
-}
 
 export class MonteCarlo {
 
